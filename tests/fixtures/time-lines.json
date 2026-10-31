@@ -1,0 +1,78 @@
+{
+  "note": "The time line of ADR-0052 §3, read by the Brain's TypeScript test of currentLocalTimeLine and by this plugin's Python test, so the two renderings cannot drift. Change a line here and both must follow.",
+  "lines": [
+    {
+      "at": "2026-10-29T13:05:00Z",
+      "zone": "Europe/Berlin",
+      "line": "Current local time: Thursday 2026-10-29 14:05 (Europe/Berlin)",
+      "why": "the ADR's example"
+    },
+    {
+      "at": "2026-07-05T02:30:00Z",
+      "zone": "Europe/Berlin",
+      "line": "Current local time: Sunday 2026-07-05 04:30 (Europe/Berlin)",
+      "why": "summer time"
+    },
+    {
+      "at": "2026-07-05T02:30:00Z",
+      "zone": "America/New_York",
+      "line": "Current local time: Saturday 2026-07-04 22:30 (America/New_York)",
+      "why": "still the day before"
+    },
+    {
+      "at": "2026-10-25T00:30:00Z",
+      "zone": "Europe/Berlin",
+      "line": "Current local time: Sunday 2026-10-25 02:30 (Europe/Berlin)",
+      "why": "the first 02:30 of the night summer time ends"
+    },
+    {
+      "at": "2026-10-25T01:30:00Z",
+      "zone": "Europe/Berlin",
+      "line": "Current local time: Sunday 2026-10-25 02:30 (Europe/Berlin)",
+      "why": "the second 02:30 of that night"
+    },
+    {
+      "at": "2026-03-29T01:00:00Z",
+      "zone": "Europe/Berlin",
+      "line": "Current local time: Sunday 2026-03-29 03:00 (Europe/Berlin)",
+      "why": "summer time begins, 02:00 is skipped"
+    },
+    {
+      "at": "2026-10-28T23:00:00Z",
+      "zone": "Europe/Berlin",
+      "line": "Current local time: Thursday 2026-10-29 00:00 (Europe/Berlin)",
+      "why": "midnight is 00:00, never 24:00"
+    },
+    {
+      "at": "2026-12-31T23:30:00Z",
+      "zone": "Asia/Kolkata",
+      "line": "Current local time: Friday 2027-01-01 05:00 (Asia/Kolkata)",
+      "why": "a half-hour offset across the year"
+    },
+    {
+      "at": "2028-02-29T12:00:00Z",
+      "zone": "Pacific/Chatham",
+      "line": "Current local time: Wednesday 2028-03-01 01:45 (Pacific/Chatham)",
+      "why": "a 45-minute offset, from a leap day into March"
+    },
+    {
+      "at": "2026-10-29T13:05:59Z",
+      "zone": "UTC",
+      "line": "Current local time: Thursday 2026-10-29 13:05 (UTC)",
+      "why": "seconds are dropped, not rounded"
+    },
+    {
+      "at": "2026-10-04T15:45:00Z",
+      "zone": "Australia/Lord_Howe",
+      "line": "Current local time: Monday 2026-10-05 02:45 (Australia/Lord_Howe)",
+      "why": "a half-hour summer time"
+    },
+    {
+      "at": "2026-11-02T02:59:00Z",
+      "zone": "America/St_Johns",
+      "line": "Current local time: Sunday 2026-11-01 23:29 (America/St_Johns)",
+      "why": "a negative half-hour offset"
+    }
+  ],
+  "unknown_zones": ["", "Nowhere/At_All", "Europe/Berlin ", "../../etc/passwd"]
+}
