@@ -2,7 +2,7 @@
 
 `memory_provider.py` is `agent/memory_provider.py` from
 [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent) at tag
-`v2026.8.31` (Hermes v0.21.0, commit `29112bef099274229cadff79cdff7bf7b99c4b77`),
+`v0.22.5` (Hermes v0.22.5, commit `bf0203a794a07aac3ff764972ab9087baa4e4f4e`),
 byte for byte. `LICENSE` is that repository's licence, which covers the file.
 
 The tests load the plugin against it, so the plugin runs on the real base class without

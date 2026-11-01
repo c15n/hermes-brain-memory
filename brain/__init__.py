@@ -21,13 +21,14 @@ import os
 import threading
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from agent.memory_provider import MemoryProvider
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,10 @@ MAX_BODY_BYTES = 64 * 1024
 PANEL_PLATFORM = "api_server"
 
 PRIMARY_CONTEXT = "primary"
+
+# Plain HTTP carries the token in the clear, so it is accepted only for a Brain
+# on this machine; anything else must be https.
+LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1"})
 
 # The fields the plugin reads, with their types. Fields it does not know are
 # ignored (the path versions the contract, /v1 only ever gains fields).
@@ -171,9 +176,15 @@ def _settings() -> Optional[Tuple[str, str]]:
     token = os.environ.get("BRAIN_API_TOKEN", "").strip()
     if not url or not token:
         return None
-    if not url.startswith(("https://", "http://")):
+    try:
+        parts = urllib.parse.urlsplit(url)
+    except ValueError:
         return None
-    return url, token
+    if parts.scheme == "https" and parts.hostname:
+        return url, token
+    if parts.scheme == "http" and (parts.hostname or "").lower() in LOOPBACK_HOSTS:
+        return url, token
+    return None
 
 
 def fetch_briefing() -> Tuple[Optional[Dict[str, Any]], bool]:
@@ -332,8 +343,9 @@ class BrainMemoryProvider(MemoryProvider):
             if briefing is None:
                 return ""
             persona = briefing["persona_block"].strip()
-            context = self._agent_context or PRIMARY_CONTEXT
-            if context != PRIMARY_CONTEXT:
+            # The profile only for an agent Hermes names as the primary one;
+            # without a name (a Hermes that did not say) the persona alone.
+            if self._agent_context != PRIMARY_CONTEXT:
                 return persona
             profile = briefing["profile_block"].strip()
             return "\n\n".join(part for part in (persona, profile) if part)

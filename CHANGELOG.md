@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.1 — 2026-11-01
+
+- The profile only for an agent Hermes names `agent_context: primary`; an agent with no
+  `agent_context` now gets the persona block alone, like a subagent.
+- `BRAIN_API_URL` must be `https://`; plain `http://` only for `localhost` or
+  `127.0.0.1`. Any other URL leaves the plugin unavailable, and no request is made.
+- `plugin.yaml` declares `requires_hermes: ">=0.21.0"`.
+- README: the MCP server's `Authorization` header as `Bearer ${BRAIN_API_TOKEN}`, so the
+  token is kept in `.env` once rather than also in Hermes' `MCP_<NAME>_API_KEY`.
+- Tested against Hermes v0.22.5 (tag `v0.22.5`).
+
 ## 0.1.0 — 2026-10-30
 
 - First release. One briefing per Hermes session from `GET /v1/me/briefing`: the

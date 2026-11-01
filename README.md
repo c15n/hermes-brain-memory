@@ -29,9 +29,14 @@ Current local time: Thursday 2026-10-29 14:05 (Europe/Berlin)
 
 ## Requirements
 
-- **Hermes v0.21.0** — tested against tag `v2026.8.31` (commit `29112bef0996`). Another
+- **Hermes v0.22.5** — tested against tag `v0.22.5` (commit `bf0203a794a0`). Another
   version may change the provider interface; `tests/test_hermes_contract.py` reads it.
-- Python 3.11 or later (Hermes' own requirement). Standard library only: the plugin
+- Python 3.11 or later (Hermes' own requirement; its Docker image runs 3.14).
+- **One Hermes profile per gateway.** The plugin reads `BRAIN_API_URL` and
+  `BRAIN_API_TOKEN` from the process environment. Since v0.22 a gateway that serves two
+  or more profiles multiplexes them in one process, and there the environment is the
+  launching profile's, not the one a turn belongs to. Until the plugin reads its
+  settings per profile, run it where the gateway serves a single profile. Standard library only: the plugin
   installs no dependency into Hermes' environment.
 - A Brain instance and a Brain API token — the same token Hermes already uses for Brain's
   MCP server.
@@ -69,9 +74,24 @@ hermes plugins install c15n/hermes-brain-memory/brain --ref <40-character commit
    BRAIN_API_TOKEN=<your Brain API token>
    ```
 
-   `BRAIN_API_URL` is the Brain's base URL **without** `/v1`. Hermes loads the profile's
-   `.env` into the environment, where the plugin reads both. Without either, the plugin
-   reports itself unavailable and Hermes runs without it.
+   `BRAIN_API_URL` is the Brain's base URL **without** `/v1`, and `https://` — plain
+   `http://` only for a Brain on the same machine (`localhost` or `127.0.0.1`),
+   because the token travels in a header. Hermes loads the profile's `.env` into the
+   environment, where the plugin reads both. Without either, or with another URL, the
+   plugin reports itself unavailable and Hermes runs without it.
+
+   Hermes' connection to Brain's MCP server uses the same token. Write it there as a
+   reference to the same variable rather than a second copy, so the token lives in
+   `.env` once. (Set up through Hermes' own interface, the server would get a variable
+   of its own, `MCP_<NAME>_API_KEY`, and the two copies could drift apart.)
+
+   ```yaml
+   mcp_servers:
+     brain:
+       url: https://brain.example.com/mcp
+       headers:
+         Authorization: "Bearer ${BRAIN_API_TOKEN}"
+   ```
 
 2. Activate it in the profile's `config.yaml`:
 
@@ -114,7 +134,7 @@ hermes plugins remove brain
 | `is_available()` | `True` when `BRAIN_API_URL` and `BRAIN_API_TOKEN` are set. No network. |
 | `initialize()` | Remembers the session, `platform` and, when given, `agent_context`. No network. |
 | `on_turn_start()` | Takes `platform` / `agent_context` when `initialize()` had none. The message is not read. |
-| `system_prompt_block()` | Fetches the briefing once per session (timeout 3 s). The main agent gets the persona block, a blank line, the profile block; any other `agent_context` gets the persona block only. On Hermes' API server (`platform: api_server`) it returns nothing and makes no request. |
+| `system_prompt_block()` | Fetches the briefing once per session (timeout 3 s). An agent Hermes names `agent_context: primary` gets the persona block, a blank line, the profile block; any other `agent_context`, or none, gets the persona block only. On Hermes' API server (`platform: api_server`) it returns nothing and makes no request. |
 | `prefetch()` | The time line, rendered locally from the briefing's time zone. No request; the query is not used. |
 | `get_tool_schemas()` | `[]` — no tools. |
 | `recall_status()` | `None`. |

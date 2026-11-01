@@ -23,10 +23,10 @@ FIXTURES = ROOT / "tests" / "fixtures"
 # Hermes' `agent/memory_provider.py` at the tested tag, unchanged (see
 # tests/hermes/README.md). The plugin imports its base class from there.
 HERMES_BASE = ROOT / "tests" / "hermes" / "memory_provider.py"
-HERMES_TAG = "v2026.8.31"
-HERMES_VERSION = "0.21.0"
-HERMES_COMMIT = "29112bef099274229cadff79cdff7bf7b99c4b77"
-HERMES_BASE_SHA256 = "902e061d33b372cc28facd8c7bf7fe032aacda3f17ea1e4107fea9fd01885335"
+HERMES_TAG = "v0.22.5"
+HERMES_VERSION = "0.22.5"
+HERMES_COMMIT = "bf0203a794a07aac3ff764972ab9087baa4e4f4e"
+HERMES_BASE_SHA256 = "ac81dcf489c698891f0edebfe26845a75c50d2bde77ec3be8d7938a85c79f1fc"
 
 
 def contract_path() -> Path:

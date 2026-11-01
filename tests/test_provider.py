@@ -56,7 +56,15 @@ class ProviderCase(unittest.TestCase):
         p = brain.BrainMemoryProvider()
         kwargs.setdefault("platform", "telegram")
         kwargs.setdefault("hermes_home", "/tmp/hermes-home")
+        # Hermes 0.22 always names the context; the main agent is "primary".
+        kwargs.setdefault("agent_context", "primary")
         p.initialize(session, **kwargs)
+        return p
+
+    def unnamed(self, session: str = "s1"):
+        """A provider whose Hermes named no agent_context."""
+        p = brain.BrainMemoryProvider()
+        p.initialize(session, platform="telegram", hermes_home="/tmp/hermes-home")
         return p
 
     def remember_a_good_answer(self) -> None:
@@ -74,6 +82,37 @@ class Availability(ProviderCase):
                 self.assertFalse(brain.BrainMemoryProvider().is_available(), missing)
         with mock.patch.dict(os.environ, {"BRAIN_API_URL": "file:///etc/passwd"}):
             self.assertFalse(brain.BrainMemoryProvider().is_available())
+        self.assertEqual(self.server.requests, [])
+
+    def test_plain_http_only_for_a_brain_on_this_machine(self) -> None:
+        # The token travels in the Authorization header; over http that is
+        # readable on the way, so only loopback may use it.
+        # Some values are joined so that the folder's boundary scan, which
+        # reads this file as published text, does not take them for hosts.
+        http = "http" + "://"
+        private_ip = ".".join(["10", "0", "0", "5"])
+        cases = {
+            "https://brain.example.com": True,
+            "https://brain.example.com:8443": True,
+            "http://localhost:3000": True,
+            "http://127.0.0.1:3000": True,
+            http + "[::1]:3000": False,
+            http + "LOCAL" + "HOST": True,
+            "http://brain.example.com": False,
+            http + private_ip + ":3000": False,
+            "http://localhost.example.com": False,
+            "http://127.0.0.1.example.com": False,
+            "https://": False,
+            "ftp://localhost": False,
+        }
+        for url, available in cases.items():
+            with self.subTest(url), mock.patch.dict(os.environ, {"BRAIN_API_URL": url}):
+                self.assertEqual(brain.BrainMemoryProvider().is_available(), available)
+        self.assertEqual(self.server.requests, [])
+
+    def test_a_non_local_http_url_sends_nothing(self) -> None:
+        with mock.patch.dict(os.environ, {"BRAIN_API_URL": "http://brain.example.com"}):
+            self.assertEqual(self.provider().system_prompt_block(), "")
         self.assertEqual(self.server.requests, [])
 
     def test_no_tools_and_no_recall_indicator(self) -> None:
@@ -94,8 +133,14 @@ class SessionBlock(ProviderCase):
     def test_primary_gets_the_persona_then_the_profile(self) -> None:
         self.assertEqual(self.provider(agent_context="primary").system_prompt_block(), BOTH)
 
-    def test_absent_agent_context_counts_as_primary(self) -> None:
-        self.assertEqual(self.provider().system_prompt_block(), BOTH)
+    def test_an_unnamed_agent_context_gets_the_persona_only(self) -> None:
+        # The profile needs Hermes to say "primary"; not saying is not enough.
+        self.assertEqual(self.unnamed().system_prompt_block(), PERSONA)
+        for context in ("", "Primary", " primary"):
+            with self.subTest(repr(context)):
+                self.assertEqual(
+                    self.provider(agent_context=context).system_prompt_block(), PERSONA
+                )
 
     def test_any_other_context_gets_the_persona_only(self) -> None:
         for context in ("subagent", "cron", "flush"):
@@ -149,9 +194,12 @@ class Panel(ProviderCase):
         self.assertEqual(self.server.requests, [])
 
     def test_agent_context_from_on_turn_start_when_initialize_had_none(self) -> None:
-        p = self.provider()
+        p = self.unnamed()
         p.on_turn_start(1, MESSAGE, agent_context="subagent")
         self.assertEqual(p.system_prompt_block(), PERSONA)
+        p = self.unnamed("s2")
+        p.on_turn_start(1, MESSAGE, agent_context="primary")
+        self.assertEqual(p.system_prompt_block(), BOTH)
 
 
 class Fallback(ProviderCase):

@@ -11,10 +11,11 @@ from __future__ import annotations
 
 import ast
 import hashlib
+import re
 import unittest
 from typing import Dict, List, Tuple
 
-from tests.support import HERMES_BASE, HERMES_BASE_SHA256, PLUGIN
+from tests.support import HERMES_BASE, HERMES_BASE_SHA256, HERMES_VERSION, PLUGIN
 
 Signature = Tuple[Tuple[str, ...], Tuple[str, ...], Tuple[str, ...], bool, bool]
 
@@ -89,7 +90,32 @@ class HermesContract(unittest.TestCase):
         doc = ast.get_docstring(BASE["initialize"]) or ""
         for kwarg in ("platform", "hermes_home", "agent_context"):
             self.assertIn(kwarg, doc)
-        self.assertIn('"primary"', doc)
+        # The plugin gives the profile to "primary" alone and the persona to
+        # every other value: the values Hermes names must include both kinds.
+        for value in ('"primary"', '"subagent"', '"cron"'):
+            self.assertIn(value, doc)
+
+    def test_the_manifest_requires_a_hermes_the_tested_one_satisfies(self) -> None:
+        # Hermes skips a plugin whose `requires_hermes` rejects the running
+        # version before importing it; the floor is the oldest one tested.
+        manifest = (PLUGIN / "plugin.yaml").read_text("utf-8")
+        match = re.search(r'^requires_hermes: ">=(\d+)\.(\d+)\.(\d+)"$', manifest, re.M)
+        self.assertIsNotNone(match, "plugin.yaml has no requires_hermes floor")
+        assert match is not None
+        floor = tuple(int(part) for part in match.groups())
+        self.assertEqual(floor, (0, 21, 0))
+        tested = tuple(int(part) for part in HERMES_VERSION.split("."))
+        self.assertGreaterEqual(tested, floor)
+
+    def test_the_hooks_the_plugin_leaves_alone_still_exist(self) -> None:
+        # v0.1 sends nothing of a conversation (ADR-0052 §12): these stay the
+        # base class's, and a renamed one would be a hook Hermes calls that
+        # the plugin never sees.
+        for hook in ("sync_turn", "queue_prefetch", "on_session_end", "on_pre_compress",
+                     "on_memory_write", "on_delegation", "identity_signature"):
+            with self.subTest(hook):
+                self.assertIn(hook, BASE)
+                self.assertNotIn(hook, PLUGIN_METHODS)
 
 
 if __name__ == "__main__":
