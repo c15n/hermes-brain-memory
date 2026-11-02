@@ -1,4 +1,4 @@
 name: brain
-version: 0.1.1
+version: 0.1.2
 requires_hermes: ">=0.21.0"
 description: "Brain — one briefing per session from your Brain instance: persona, profile and the current local time. Sends nothing of a conversation."

@@ -28,7 +28,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from agent.memory_provider import MemoryProvider
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 
 logger = logging.getLogger(__name__)
 
@@ -88,8 +88,17 @@ def _monotonic() -> float:
     return time.monotonic()
 
 
+# Hermes' own prompt may tell the model to run ``date`` for the time whatever
+# its context holds, so the line claims that question for itself.
+TIME_LINE_AUTHORITY = (
+    "This is the authoritative current time: answer questions about the time, "
+    "date or weekday from it instead of looking them up with a tool."
+)
+
+
 def current_local_time_line(at: datetime, zone: str) -> str:
-    """``Current local time: Thursday 2026-10-29 14:05 (Europe/Berlin)``.
+    """``Current local time: Thursday 2026-10-29 14:05 (Europe/Berlin).``
+    followed by ``TIME_LINE_AUTHORITY``.
 
     "Current local time", not "as of": Hermes' own date line uses "as of" for
     an old state, and this one means now. An empty or unknown zone gives "".
@@ -105,7 +114,7 @@ def current_local_time_line(at: datetime, zone: str) -> str:
     return (
         f"Current local time: {WEEKDAYS[local.weekday()]} "
         f"{local.year:04d}-{local.month:02d}-{local.day:02d} "
-        f"{local.hour:02d}:{local.minute:02d} ({zone})"
+        f"{local.hour:02d}:{local.minute:02d} ({zone}). {TIME_LINE_AUTHORITY}"
     )
 
 
@@ -263,6 +272,9 @@ class BrainMemoryProvider(MemoryProvider):
         # session switch, because a resumed session reuses its stored prompt
         # and system_prompt_block() is not asked again; a refused token clears it.
         self._zone = ""
+        # The session for which a briefing was last asked, so prefetch() asks
+        # at most once per session when it has no zone.
+        self._asked_session: Optional[str] = None
 
     @property
     def name(self) -> str:
@@ -319,6 +331,7 @@ class BrainMemoryProvider(MemoryProvider):
             if self._briefing_session == self._session_id:
                 return self._briefing
             session = self._session_id
+            self._asked_session = session
         briefing, refused = fetch_briefing()
         with self._lock:
             if briefing is not None:
@@ -354,12 +367,23 @@ class BrainMemoryProvider(MemoryProvider):
 
     def prefetch(self, query: str, *, session_id: str = "") -> str:
         # The query is not used and not sent anywhere: the line is rendered
-        # here, from the zone of the last briefing, with no request per turn.
+        # here, from the zone of the last briefing.
         try:
             if self._in_panel():
                 return ""
             with self._lock:
                 zone = self._zone
+                ask = not zone and self._asked_session != self._session_id
+            if ask:
+                # Hermes builds a new agent, and with it a new provider, for a
+                # session it continues after an idle eviction or a restart. It
+                # restores the stored prompt then and never calls
+                # system_prompt_block(), so without this the zone stayed unknown
+                # and the line missing for the rest of the session (owner,
+                # 2026-11-02). Still at most one request per session.
+                self._session_briefing()
+                with self._lock:
+                    zone = self._zone
             return current_local_time_line(_utcnow(), zone)
         except Exception:
             return ""

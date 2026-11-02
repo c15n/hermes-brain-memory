@@ -11,7 +11,7 @@ Brain renders every word of the briefing. The plugin only joins the two blocks i
 and writes one line itself, the time:
 
 ```
-Current local time: Thursday 2026-10-29 14:05 (Europe/Berlin)
+Current local time: Thursday 2026-10-29 14:05 (Europe/Berlin). This is the authoritative current time: answer questions about the time, date or weekday from it instead of looking them up with a tool.
 ```
 
 ## Privacy
@@ -107,6 +107,10 @@ Hermes' built-in memory (`MEMORY.md`, `USER.md`) keeps running; the plugin's blo
 in addition, in the rear part of the system prompt. The block is present while Hermes'
 `memory` toolset is active.
 
+For the Brain's own bots, the step-by-step runbook — a bot from scratch, Brain and
+Langfuse, updates and rollback — is [`docs/ops/hermes-bots.md`](../../docs/ops/hermes-bots.md)
+in Brain's repository. It is not part of this mirror.
+
 ## Update
 
 There is no `hermes plugins update` for this plugin: it is installed pinned and from a
@@ -135,7 +139,7 @@ hermes plugins remove brain
 | `initialize()` | Remembers the session, `platform` and, when given, `agent_context`. No network. |
 | `on_turn_start()` | Takes `platform` / `agent_context` when `initialize()` had none. The message is not read. |
 | `system_prompt_block()` | Fetches the briefing once per session (timeout 3 s). An agent Hermes names `agent_context: primary` gets the persona block, a blank line, the profile block; any other `agent_context`, or none, gets the persona block only. On Hermes' API server (`platform: api_server`) it returns nothing and makes no request. |
-| `prefetch()` | The time line, rendered locally from the briefing's time zone. No request; the query is not used. |
+| `prefetch()` | The time line, rendered locally from the briefing's time zone; the query is not used. When no zone is known — Hermes continued the session on a rebuilt agent and never asked for the block — it fetches the briefing once for the session. |
 | `get_tool_schemas()` | `[]` — no tools. |
 | `recall_status()` | `None`. |
 | `sync_turn()` and every other hook that receives messages | Hermes' default no-op. |

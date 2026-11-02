@@ -4,73 +4,73 @@
     {
       "at": "2026-10-29T13:05:00Z",
       "zone": "Europe/Berlin",
-      "line": "Current local time: Thursday 2026-10-29 14:05 (Europe/Berlin)",
+      "line": "Current local time: Thursday 2026-10-29 14:05 (Europe/Berlin). This is the authoritative current time: answer questions about the time, date or weekday from it instead of looking them up with a tool.",
       "why": "the ADR's example"
     },
     {
       "at": "2026-07-05T02:30:00Z",
       "zone": "Europe/Berlin",
-      "line": "Current local time: Sunday 2026-07-05 04:30 (Europe/Berlin)",
+      "line": "Current local time: Sunday 2026-07-05 04:30 (Europe/Berlin). This is the authoritative current time: answer questions about the time, date or weekday from it instead of looking them up with a tool.",
       "why": "summer time"
     },
     {
       "at": "2026-07-05T02:30:00Z",
       "zone": "America/New_York",
-      "line": "Current local time: Saturday 2026-07-04 22:30 (America/New_York)",
+      "line": "Current local time: Saturday 2026-07-04 22:30 (America/New_York). This is the authoritative current time: answer questions about the time, date or weekday from it instead of looking them up with a tool.",
       "why": "still the day before"
     },
     {
       "at": "2026-10-25T00:30:00Z",
       "zone": "Europe/Berlin",
-      "line": "Current local time: Sunday 2026-10-25 02:30 (Europe/Berlin)",
+      "line": "Current local time: Sunday 2026-10-25 02:30 (Europe/Berlin). This is the authoritative current time: answer questions about the time, date or weekday from it instead of looking them up with a tool.",
       "why": "the first 02:30 of the night summer time ends"
     },
     {
       "at": "2026-10-25T01:30:00Z",
       "zone": "Europe/Berlin",
-      "line": "Current local time: Sunday 2026-10-25 02:30 (Europe/Berlin)",
+      "line": "Current local time: Sunday 2026-10-25 02:30 (Europe/Berlin). This is the authoritative current time: answer questions about the time, date or weekday from it instead of looking them up with a tool.",
       "why": "the second 02:30 of that night"
     },
     {
       "at": "2026-03-29T01:00:00Z",
       "zone": "Europe/Berlin",
-      "line": "Current local time: Sunday 2026-03-29 03:00 (Europe/Berlin)",
+      "line": "Current local time: Sunday 2026-03-29 03:00 (Europe/Berlin). This is the authoritative current time: answer questions about the time, date or weekday from it instead of looking them up with a tool.",
       "why": "summer time begins, 02:00 is skipped"
     },
     {
       "at": "2026-10-28T23:00:00Z",
       "zone": "Europe/Berlin",
-      "line": "Current local time: Thursday 2026-10-29 00:00 (Europe/Berlin)",
+      "line": "Current local time: Thursday 2026-10-29 00:00 (Europe/Berlin). This is the authoritative current time: answer questions about the time, date or weekday from it instead of looking them up with a tool.",
       "why": "midnight is 00:00, never 24:00"
     },
     {
       "at": "2026-12-31T23:30:00Z",
       "zone": "Asia/Kolkata",
-      "line": "Current local time: Friday 2027-01-01 05:00 (Asia/Kolkata)",
+      "line": "Current local time: Friday 2027-01-01 05:00 (Asia/Kolkata). This is the authoritative current time: answer questions about the time, date or weekday from it instead of looking them up with a tool.",
       "why": "a half-hour offset across the year"
     },
     {
       "at": "2028-02-29T12:00:00Z",
       "zone": "Pacific/Chatham",
-      "line": "Current local time: Wednesday 2028-03-01 01:45 (Pacific/Chatham)",
+      "line": "Current local time: Wednesday 2028-03-01 01:45 (Pacific/Chatham). This is the authoritative current time: answer questions about the time, date or weekday from it instead of looking them up with a tool.",
       "why": "a 45-minute offset, from a leap day into March"
     },
     {
       "at": "2026-10-29T13:05:59Z",
       "zone": "UTC",
-      "line": "Current local time: Thursday 2026-10-29 13:05 (UTC)",
+      "line": "Current local time: Thursday 2026-10-29 13:05 (UTC). This is the authoritative current time: answer questions about the time, date or weekday from it instead of looking them up with a tool.",
       "why": "seconds are dropped, not rounded"
     },
     {
       "at": "2026-10-04T15:45:00Z",
       "zone": "Australia/Lord_Howe",
-      "line": "Current local time: Monday 2026-10-05 02:45 (Australia/Lord_Howe)",
+      "line": "Current local time: Monday 2026-10-05 02:45 (Australia/Lord_Howe). This is the authoritative current time: answer questions about the time, date or weekday from it instead of looking them up with a tool.",
       "why": "a half-hour summer time"
     },
     {
       "at": "2026-11-02T02:59:00Z",
       "zone": "America/St_Johns",
-      "line": "Current local time: Sunday 2026-11-01 23:29 (America/St_Johns)",
+      "line": "Current local time: Sunday 2026-11-01 23:29 (America/St_Johns). This is the authoritative current time: answer questions about the time, date or weekday from it instead of looking them up with a tool.",
       "why": "a negative half-hour offset"
     }
   ],

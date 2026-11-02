@@ -23,7 +23,11 @@ brain = load_plugin()
 
 # A pinned instant (TESTING.md: time-dependent logic pins the day).
 NOW = datetime(2026, 10, 29, 13, 5, tzinfo=timezone.utc)
-TIME_LINE = "Current local time: Thursday 2026-10-29 14:05 (Europe/Berlin)"
+TIME_LINE = (
+    "Current local time: Thursday 2026-10-29 14:05 (Europe/Berlin). "
+    "This is the authoritative current time: answer questions about the time, "
+    "date or weekday from it instead of looking them up with a tool."
+)
 BOTH = PERSONA + "\n\n" + PROFILE
 
 # Words that would only reach a request if a hook sent what it was given.
@@ -283,9 +287,33 @@ class TimeLine(ProviderCase):
         self.assertEqual(p.prefetch(MESSAGE), TIME_LINE)
         self.assertEqual(len(self.server.requests), 1)
 
-    def test_no_zone_known_yet_gives_nothing(self) -> None:
-        self.assertEqual(self.provider().prefetch(MESSAGE), "")
-        self.assertEqual(self.server.requests, [])
+    def test_a_continued_session_on_a_rebuilt_agent_still_gets_the_line(self) -> None:
+        # Hermes restores the stored prompt and never asks for the block: the
+        # zone is fetched by prefetch() itself, once for the session.
+        p = self.provider()
+        self.assertEqual(p.prefetch(MESSAGE), TIME_LINE)
+        self.assertEqual(p.prefetch(MESSAGE), TIME_LINE)
+        self.assertEqual(len(self.server.requests), 1)
+        self.assertEqual(p.system_prompt_block(), BOTH)
+        self.assertEqual(len(self.server.requests), 1)
+
+    def test_without_a_zone_prefetch_asks_once_per_session(self) -> None:
+        self.server.answer(503)
+        p = self.provider()
+        self.assertEqual(p.prefetch(MESSAGE), "")
+        self.assertEqual(p.prefetch(MESSAGE), "")
+        self.assertEqual(len(self.server.requests), 1)
+        self.server.answer(200)
+        p.on_session_switch("s2")
+        self.assertEqual(p.prefetch(MESSAGE), TIME_LINE)
+        self.assertEqual(len(self.server.requests), 2)
+
+    def test_after_the_block_was_asked_prefetch_asks_nothing_more(self) -> None:
+        self.server.answer(403)
+        p = self.provider()
+        self.assertEqual(p.system_prompt_block(), "")
+        self.assertEqual(p.prefetch(MESSAGE), "")
+        self.assertEqual(len(self.server.requests), 1)
 
     def test_a_zone_zoneinfo_does_not_know_gives_nothing(self) -> None:
         self.server.answer(200, briefing(zone="Nowhere/At_All"))

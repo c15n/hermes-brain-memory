@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.2 — 2026-11-02
+
+- The time line comes back in a Hermes session that continues on a rebuilt agent
+  (after Hermes evicted an idle agent, or after a restart). Hermes restores the stored
+  prompt then and never asks for the session block, so the plugin did not know the time
+  zone and `prefetch()` returned nothing until the next `/new`. `prefetch()` now fetches
+  the briefing itself when it has no zone, at most once per session.
+- The time line says that it is the authoritative current time, to be used instead of
+  looking the time up with a tool. Hermes' own prompt tells some models to run `date`.
+
 ## 0.1.1 — 2026-11-01
 
 - The profile only for an agent Hermes names `agent_context: primary`; an agent with no
