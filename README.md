@@ -3,12 +3,14 @@
 Published from a private monorepo; issues welcome here.
 
 A memory provider for [Hermes](https://github.com/NousResearch/hermes-agent) that gives
-every Hermes session one briefing from your Brain instance: who the assistant is for you
-(persona and language), what Brain knows about you (your profile), the areas where Brain
-remembers something — and, with every turn, the current local time.
+every Hermes session one briefing from your Brain instance: for an agent's own token, the
+agent's page (identity, mandate, working notes); who the assistant is for you (persona
+and language); what Brain knows about you (your profile), the areas where Brain
+remembers something; the About and Now of your contexts — and, with every turn, the
+current local time.
 
-Brain renders every word of the briefing. The plugin only joins the two blocks it gets
-and writes one line itself, the time:
+Brain renders every word of the briefing. The plugin only joins the blocks it gets, in
+that order, and writes one line itself, the time:
 
 ```
 Current local time: Thursday 2026-10-29 14:05 (Europe/Berlin). This is the authoritative current time: answer questions about the time, date or weekday from it instead of looking them up with a tool.
@@ -16,7 +18,7 @@ Current local time: Thursday 2026-10-29 14:05 (Europe/Berlin). This is the autho
 
 ## Privacy
 
-- **v0.1 sends no conversations.** The plugin's only request is
+- **The plugin sends no conversations.** The plugin's only request is
   `GET <BRAIN_API_URL>/v1/me/briefing`, once per Hermes session, with no query string and
   no body. No message, no reply and nothing Hermes remembers reaches Brain through this
   plugin. Its tests hold it to that.
@@ -103,9 +105,38 @@ hermes plugins install c15n/hermes-brain-memory/brain --ref <40-character commit
 3. Restart Hermes. A running chat keeps the prompt it started with; the briefing arrives
    in the next session (`/new` in Telegram).
 
-Hermes' built-in memory (`MEMORY.md`, `USER.md`) keeps running; the plugin's block comes
-in addition, in the rear part of the system prompt. The block is present while Hermes'
+By default Hermes' built-in memory (`MEMORY.md`, `USER.md`) keeps running; the plugin's
+block comes in addition, in the rear part of the system prompt. The block is present while Hermes'
 `memory` toolset is active.
+
+**Recommended: switch the built-in memory off once its entries are in the Brain.** Left
+on, the agent keeps two memories, and in the prompt it cannot tell which one a fact came
+from: it writes one to `USER.md` that the Brain already holds, or answers from an entry
+the Brain has since corrected.
+
+1. Move the entries first, while they are still in the prompt: ask the agent to list
+   every entry with where it belongs (the profile, a context, or nowhere, such as notes
+   about the agent's own tools), check the list yourself, then have the agent store the
+   approved ones through `remember`. The list needs your check because the agent cannot
+   tell an entry from `USER.md` from one the Brain's block put there.
+2. Back up the profile's `memories/` folder. The files stay on disk; they are no longer
+   read.
+3. Turn off both switches in `config.yaml`, then restart Hermes:
+
+   ```yaml
+   memory:
+     provider: brain
+     memory_enabled: false
+     user_profile_enabled: false
+   ```
+
+   With both off, Hermes also drops its `memory` tool and its memory nudges.
+
+**Never disable the `memory` toolset** (`disabled_toolsets`, or leaving it out of a
+platform's toolsets) to get there: Hermes then withholds the plugin's block too, and logs
+that the `memory` toolset is "gated off". `hermes memory status` should show the
+built-in memory, the user profile and the memory tool as disabled, and `brain` as the
+provider.
 
 For the Brain's own bots, the step-by-step runbook — a bot from scratch, Brain and
 Langfuse, updates and rollback — is [`docs/ops/hermes-bots.md`](../../docs/ops/hermes-bots.md)
@@ -125,7 +156,9 @@ Then restart Hermes.
 ## Remove
 
 Delete the `provider: brain` line from `config.yaml` and restart Hermes. Hermes returns to
-its built-in memory alone, and Brain notices nothing. To remove the files too:
+its built-in memory alone, and Brain notices nothing. If you switched the built-in memory
+off, turn `memory_enabled` and `user_profile_enabled` back on, or Hermes has no memory at
+all. To remove the files too:
 
 ```sh
 hermes plugins remove brain
@@ -138,7 +171,7 @@ hermes plugins remove brain
 | `is_available()` | `True` when `BRAIN_API_URL` and `BRAIN_API_TOKEN` are set. No network. |
 | `initialize()` | Remembers the session, `platform` and, when given, `agent_context`. No network. |
 | `on_turn_start()` | Takes `platform` / `agent_context` when `initialize()` had none. The message is not read. |
-| `system_prompt_block()` | Fetches the briefing once per session (timeout 3 s). An agent Hermes names `agent_context: primary` gets the persona block, a blank line, the profile block; any other `agent_context`, or none, gets the persona block only. On Hermes' API server (`platform: api_server`) it returns nothing and makes no request. |
+| `system_prompt_block()` | Fetches the briefing once per session (timeout 3 s). An agent Hermes names `agent_context: primary` gets the agent block, the persona block, the profile block and the context block, each when present, separated by a blank line; any other `agent_context`, or none, gets the agent block and the persona block only. On Hermes' API server (`platform: api_server`) it returns nothing and makes no request. |
 | `prefetch()` | The time line, rendered locally from the briefing's time zone; the query is not used. When no zone is known — Hermes continued the session on a rebuilt agent and never asked for the block — it fetches the briefing once for the session. |
 | `get_tool_schemas()` | `[]` — no tools. |
 | `recall_status()` | `None`. |
@@ -153,7 +186,8 @@ When the request fails:
 | anything else (a redirect, a 404, a body that is not a briefing) | nothing |
 
 No hook raises into Hermes. Fields the plugin does not know are ignored; a briefing
-missing a required field is not used. The contract is the JSON Schema in
+missing a required field is not used. `agent_block` and `context_block` are optional: one
+that is missing, empty or not a string is left out, and the rest of the briefing is used. The contract is the JSON Schema in
 `contracts/v1/briefing.schema.json`.
 
 ## Development

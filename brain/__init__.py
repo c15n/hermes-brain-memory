@@ -2,10 +2,11 @@
 
 Fetches one briefing per Hermes session from a Brain instance
 (``GET /v1/me/briefing``) and hands it to Hermes as the provider's system-prompt
-block. Every word of that block is rendered by the Brain; the only text this
-plugin writes itself is the time line ``prefetch()`` returns.
+block. Every word of that block is rendered by the Brain; the plugin only puts
+the Brain's blocks in order, and the only text it writes itself is the time
+line ``prefetch()`` returns.
 
-Version 0.1 sends nothing of a conversation to the Brain. Its one request is
+The plugin sends nothing of a conversation to the Brain. Its one request is
 the GET above, with no query string and no body.
 
 Standard library only: this module runs inside Hermes' own environment and
@@ -28,7 +29,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from agent.memory_provider import MemoryProvider
 
-__version__ = "0.1.2"
+__version__ = "0.2.0"
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +42,7 @@ TIMEOUT_SECONDS = 3.0
 # Never after a 401/403: a revoked or narrowed token is not answered from memory.
 FALLBACK_SECONDS = 15 * 60
 
-# The two blocks are bounded at 4,000 characters by the Brain; this is a
+# The blocks together are bounded at 4,000 characters by the Brain; this is a
 # backstop against a body that is not a briefing at all.
 MAX_BODY_BYTES = 64 * 1024
 
@@ -65,6 +66,13 @@ REQUIRED_FIELDS: Dict[str, type] = {
     "as_of": str,
     "knows_me": bool,
 }
+
+# Blocks the Brain sends when it has them (ADR-0065 §9): the agent's own page
+# for an agent's token, the About and Now of its contexts. Optional in the
+# contract because the plugin does not require them; one that is missing, empty
+# or not a string is left out and the rest of the briefing still stands — an
+# older Brain or a person's token is briefed as before.
+OPTIONAL_BLOCKS = ("agent_block", "context_block")
 
 # English and fixed, not the host's locale, so the line reads the same on every
 # host and exactly as the Brain's own `currentLocalTimeLine` writes it.
@@ -134,6 +142,10 @@ def _parse_briefing(body: bytes) -> Optional[Dict[str, Any]]:
         briefing[field] = value
     if not briefing["zone"]:
         return None
+    for field in OPTIONAL_BLOCKS:
+        value = data.get(field)
+        if isinstance(value, str) and value.strip():
+            briefing[field] = value
     return briefing
 
 
@@ -355,13 +367,16 @@ class BrainMemoryProvider(MemoryProvider):
             briefing = self._session_briefing()
             if briefing is None:
                 return ""
-            persona = briefing["persona_block"].strip()
-            # The profile only for an agent Hermes names as the primary one;
-            # without a name (a Hermes that did not say) the persona alone.
-            if self._agent_context != PRIMARY_CONTEXT:
-                return persona
-            profile = briefing["profile_block"].strip()
-            return "\n\n".join(part for part in (persona, profile) if part)
+            # Outside in (ADR-0065 §9): the agent, then how it speaks, then the
+            # person, then the contexts. Joined, never rewritten or cut: the
+            # Brain renders every block, quotes their values and holds the budget.
+            parts = [briefing.get("agent_block", ""), briefing["persona_block"]]
+            # The person and their contexts only for an agent Hermes names as
+            # the primary one; a subagent, or a Hermes that did not say, gets
+            # who it is and how to speak (ADR-0052 §4).
+            if self._agent_context == PRIMARY_CONTEXT:
+                parts += [briefing["profile_block"], briefing.get("context_block", "")]
+            return "\n\n".join(part.strip() for part in parts if part.strip())
         except Exception:
             return ""
 

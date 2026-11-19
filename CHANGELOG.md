@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.2.0 — 2026-11-19
+
+- Renders the agent's own page when the briefing carries `agent_block` (ADR-0065 §9,
+  ADR-0064 §7): identity, mandate and working notes, as the Brain quotes them. It comes
+  first, before the persona block.
+- Renders the About and Now of the contexts when the briefing carries `context_block`,
+  after the profile block. Order: agent, persona, profile, contexts — joined by a blank
+  line, never rewritten or cut; the Brain holds the budget.
+- The profile and the contexts only for `agent_context: primary`; any other agent gets
+  the agent block and the persona block.
+- Both fields stay optional. Without them (an older Brain, a person's token) the block is
+  as before; one that is empty or not a string is left out and the rest still used.
+- Still one GET per session, nothing of a conversation sent.
+- README: recommends switching Hermes' built-in memory off once its entries are moved to
+  the Brain — both `memory_enabled` and `user_profile_enabled`, never the `memory`
+  toolset, which would withhold the plugin's block too. Left on, the agent keeps two
+  memories it cannot tell apart in the prompt. The Remove section says to turn both back
+  on. No code change.
+
 ## 0.1.2 — 2026-11-02
 
 - The time line comes back in a Hermes session that continues on a rebuilt agent

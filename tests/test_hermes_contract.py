@@ -108,7 +108,7 @@ class HermesContract(unittest.TestCase):
         self.assertGreaterEqual(tested, floor)
 
     def test_the_hooks_the_plugin_leaves_alone_still_exist(self) -> None:
-        # v0.1 sends nothing of a conversation (ADR-0052 §12): these stay the
+        # The plugin sends nothing of a conversation (ADR-0052 §12): these stay the
         # base class's, and a renamed one would be a hook Hermes calls that
         # the plugin never sees.
         for hook in ("sync_turn", "queue_prefetch", "on_session_end", "on_pre_compress",

@@ -62,6 +62,8 @@ def load_plugin() -> types.ModuleType:
 
 PERSONA = "Persona block: a test persona, rendered by the Brain."
 PROFILE = "Profile block: a test profile, rendered by the Brain."
+AGENT = "Agent block: a test agent's page, rendered by the Brain."
+CONTEXT = "Context block: a test context's About and Now, rendered by the Brain."
 ZONE = "Europe/Berlin"
 TOKEN = "plugin-test-token-0123456789"
 

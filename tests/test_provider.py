@@ -10,6 +10,8 @@ from datetime import datetime, timezone
 from unittest import mock
 
 from tests.support import (
+    AGENT,
+    CONTEXT,
     PERSONA,
     PROFILE,
     TOKEN,
@@ -183,6 +185,79 @@ class SessionBlock(ProviderCase):
         self.assertEqual(self.provider().system_prompt_block(), BOTH)
 
 
+class AgentAndContextBlocks(ProviderCase):
+    """ADR-0065 §9: the agent's page and the contexts, outside in."""
+
+    def test_agent_block_comes_before_the_persona(self) -> None:
+        self.server.answer(200, briefing(agent_block=AGENT))
+        self.assertEqual(
+            self.provider().system_prompt_block(), AGENT + "\n\n" + BOTH
+        )
+
+    def test_the_order_is_agent_persona_profile_context(self) -> None:
+        self.server.answer(200, briefing(agent_block=AGENT, context_block=CONTEXT))
+        block = self.provider().system_prompt_block()
+        self.assertEqual(block, "\n\n".join((AGENT, PERSONA, PROFILE, CONTEXT)))
+
+    def test_context_block_follows_the_profile(self) -> None:
+        self.server.answer(200, briefing(context_block=CONTEXT))
+        self.assertEqual(self.provider().system_prompt_block(), BOTH + "\n\n" + CONTEXT)
+
+    def test_without_either_block_the_prompt_is_as_before(self) -> None:
+        # An older Brain, or a person's token: no agent_block, no context_block.
+        self.assertEqual(self.provider().system_prompt_block(), BOTH)
+        self.assertEqual(self.unnamed("s2").system_prompt_block(), PERSONA)
+
+    def test_the_blocks_are_taken_word_for_word(self) -> None:
+        # Quoted data from the Brain, long and with quotes and newlines: nothing
+        # is rewritten, cut or re-quoted.
+        agent = AGENT + '\n- your mandate: "a \\"quoted\\" line"' + "\n- x" * 400
+        context = CONTEXT + "\n- " + "y" * 3000
+        self.server.answer(200, briefing(agent_block=agent, context_block=context))
+        block = self.provider().system_prompt_block()
+        self.assertEqual(block, "\n\n".join((agent, PERSONA, PROFILE, context)))
+
+    def test_a_subagent_gets_the_agent_and_the_persona_only(self) -> None:
+        # Who it is and how to speak; the person and their contexts stay with
+        # the primary agent (ADR-0052 §4).
+        self.server.answer(200, briefing(agent_block=AGENT, context_block=CONTEXT))
+        expected = AGENT + "\n\n" + PERSONA
+        for context in ("subagent", "cron", ""):
+            with self.subTest(repr(context)):
+                self.assertEqual(
+                    self.provider(context or "s0", agent_context=context).system_prompt_block(),
+                    expected,
+                )
+        self.assertEqual(self.unnamed("unnamed").system_prompt_block(), expected)
+
+    def test_a_broken_or_unexpected_field_is_ignored_silently(self) -> None:
+        for broken in (None, "", "   \n ", 42, True, ["a list"], {"text": AGENT}):
+            with self.subTest(repr(broken)):
+                brain._fallback.clear()
+                self.server.answer(
+                    200, briefing(agent_block=broken, context_block=broken)
+                )
+                self.assertEqual(self.provider(repr(broken)).system_prompt_block(), BOTH)
+
+    def test_a_broken_agent_block_leaves_a_good_context_block(self) -> None:
+        self.server.answer(200, briefing(agent_block=7, context_block=CONTEXT))
+        self.assertEqual(self.provider().system_prompt_block(), BOTH + "\n\n" + CONTEXT)
+
+    def test_the_last_good_answer_carries_both_blocks(self) -> None:
+        self.server.answer(200, briefing(agent_block=AGENT, context_block=CONTEXT))
+        self.provider("good").system_prompt_block()
+        self.server.answer(503)
+        self.assertEqual(
+            self.provider("down").system_prompt_block(),
+            "\n\n".join((AGENT, PERSONA, PROFILE, CONTEXT)),
+        )
+
+    def test_the_panel_still_gets_nothing(self) -> None:
+        self.server.answer(200, briefing(agent_block=AGENT, context_block=CONTEXT))
+        self.assertEqual(self.provider(platform="api_server").system_prompt_block(), "")
+        self.assertEqual(self.server.requests, [])
+
+
 class Panel(ProviderCase):
     def test_api_server_gets_nothing_from_either_hook_and_no_request(self) -> None:
         p = self.provider(platform="api_server")
@@ -332,7 +407,7 @@ class TimeLine(ProviderCase):
 
 
 class NothingOfTheConversation(ProviderCase):
-    """v0.1 sends nothing of a conversation (ADR-0052 §2, §6, §12)."""
+    """No version sends anything of a conversation (ADR-0052 §2, §6, §12)."""
 
     MESSAGE_HOOKS = (
         "sync_turn",
@@ -405,12 +480,22 @@ class Logs(ProviderCase):
     def test_no_log_line_carries_a_block_the_token_or_the_url(self) -> None:
         secret_persona = "persona-words-that-must-not-be-logged"
         secret_profile = "profile-words-that-must-not-be-logged"
+        secret_agent = "agent-words-that-must-not-be-logged"
+        secret_context = "context-words-that-must-not-be-logged"
         root = logging.getLogger()
         with self.assertLogs(root, level=logging.DEBUG) as logs:
             self.server.answer(
-                200, briefing(persona_block=secret_persona, profile_block=secret_profile)
+                200,
+                briefing(
+                    persona_block=secret_persona,
+                    profile_block=secret_profile,
+                    agent_block=secret_agent,
+                    context_block=secret_context,
+                ),
             )
-            self.provider("ok").system_prompt_block()
+            self.assertIn(secret_agent, self.provider("ok").system_prompt_block())
+            self.server.answer(200, briefing(agent_block=[secret_agent], context_block=7))
+            self.provider("odd").system_prompt_block()
             for status in (401, 403, 404, 500):
                 self.server.answer(status)
                 self.provider(str(status)).system_prompt_block()
@@ -422,7 +507,8 @@ class Logs(ProviderCase):
         # The anchor: the plugin did log, so the absence below means something.
         self.assertIn("Brain briefing: HTTP 200", lines)
         self.assertIn("HTTP 403", lines)
-        for forbidden in (secret_persona, secret_profile, TOKEN, self.server.url, ZONE):
+        forbidden_words = (secret_persona, secret_profile, secret_agent, secret_context)
+        for forbidden in (*forbidden_words, TOKEN, self.server.url, ZONE):
             self.assertNotIn(forbidden, lines)
 
 
@@ -435,6 +521,16 @@ class ContractFields(unittest.TestCase):
         kinds = {"string": str, "boolean": bool}
         for field, kind in brain.REQUIRED_FIELDS.items():
             self.assertIs(kinds[schema["properties"][field]["type"]], kind, field)
+
+    def test_the_blocks_the_plugin_renders_when_present_are_optional_strings(self) -> None:
+        # CLAUDE.md §9: a field the plugin requires is required in the contract.
+        # These it renders when present and does not require.
+        from tests.support import contract_path
+
+        schema = json.loads(contract_path().read_text("utf-8"))
+        for field in brain.OPTIONAL_BLOCKS:
+            self.assertEqual(schema["properties"][field]["type"], "string", field)
+            self.assertNotIn(field, schema["required"])
 
 
 if __name__ == "__main__":

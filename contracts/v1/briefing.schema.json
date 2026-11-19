@@ -8,6 +8,14 @@
     "profile_block": {
       "type": "string"
     },
+    "context_block": {
+      "type": "string",
+      "minLength": 1
+    },
+    "agent_block": {
+      "type": "string",
+      "minLength": 1
+    },
     "zone": {
       "type": "string",
       "minLength": 1
